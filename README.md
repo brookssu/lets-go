@@ -1,2 +1,2 @@
-# lets_go
-A simple Go game in terminal environment
+# lets-go
+A Go game in terminal environment.

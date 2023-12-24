@@ -18,6 +18,9 @@
 moves on the game grid are valid.
 """
 
+from dataclasses import dataclass
+
+
 BLACK_STONE = 0
 WHITE_STONE = 1
 
@@ -26,32 +29,16 @@ _ALIVE = 0x10
 _CHECKED = 0x80
 
 
-
+@dataclass(frozen=True)
 class Move:
-    # pylint: disable=too-few-public-methods
     """Record of one move of the Go game.
-
-    Attributes:
-        grid: The game grid after this move played.
-        row, col: The coordinate of the move on the grid.
-        stone: Who made the move, BLACK_STONE or WHITE_STONE.
-        captures: Captured stones by this move.
     """
-    def __init__(   # pylint: disable=too-many-arguments
-        self,
-        grid: list[list[int]] | None,
-        row: int,
-        col: int,
-        stone: int,
-        captures: list[tuple[int, int]] | None,
-        c_stones: int
-    ):
-        self.grid = [line.copy() for line in grid] if grid else None
-        self.row = row
-        self.col = col
-        self.stone = stone
-        self.captures = captures
-        self._c_stones = c_stones
+    grid: list[list[int]] | None
+    row: int
+    col: int
+    stone: int
+    captures: list[tuple[int, int]] | None
+    _c_stones: int
 
 
     def is_identical_grid(
@@ -72,6 +59,9 @@ class Move:
         return self._c_stones == c_stones and self.grid == grid
 
 
+def _gridcopy(grid):
+    return [line.copy() for line in grid]
+
 
 class GoArbitor:
     """A Go game arbitor to record moves and determine whether they are
@@ -79,15 +69,14 @@ class GoArbitor:
     """
     def __init__(
         self,
-        grid_size: int = 19,
+        size: int = 19,
         first_move: int = BLACK_STONE,
         komi: float = 7.5
     ):
         """Initializes arbitor with parameters of the game info.
         """
         self._moves = []
-        self._grid = [[None for _ in range(grid_size)]
-                      for _ in range(grid_size)]
+        self._grid = [[None for _ in range(size)] for _ in range(size)]
         self._cur_stone = first_move
         self._c_captures = [0, 0]   # [balck, white]
         self._komi = komi
@@ -181,7 +170,7 @@ class GoArbitor:
 
         # Commits change
         self._moves.append(
-                Move(self._grid, row, col, cur, captures, c_stones))
+                Move(_gridcopy(self._grid), row, col, cur, captures, c_stones))
         self._cur_stone = not self._cur_stone
         return self._moves[-1]
 
@@ -212,9 +201,9 @@ class GoArbitor:
     def game_state(self) -> tuple[int, int, list[int], float]:
         """Game state in a tuple:
             (
-            count_of_moves: int,
-            stone_of_current_turn: int,
-            [black_captures: int, white_captures: int],
+            c_moves: int,
+            current_stone: int,
+            c_captures: [black: int, white: int],
             komi: float
             )
         """

@@ -1,4 +1,6 @@
-0.1.1 Current release
+0.1.2 Current release
+  * Change Move from normal class to data class.
+0.1.1
   + add more description about project in README.md.
 0.1.0
   + First release, basic rules supported, has only a board grid to move stones.

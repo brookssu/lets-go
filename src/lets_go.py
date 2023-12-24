@@ -99,9 +99,9 @@ def lets_go(
     key = termkey.getkey()
     while key != Key.CONTROL_X:
         if key_funcs.get(key, lambda: False)():
-            moves, cur_stone, cps, komi = arbitor.game_state
+            c_moves, cur_stone, cps, komi = arbitor.game_state
             text_bar.update_row(state_row,
-                f'Moves: {moves:<3d}    '
+                f'Moves: {c_moves:<3d}    '
                 f'Current Move: {STONES[cur_stone]}       '
                 f'Captures: {STONES[0]} {cps[0]:<3d} {STONES[1]} {cps[1]:<3d}'
                 f' Komi: {komi}')

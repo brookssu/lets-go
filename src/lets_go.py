@@ -109,7 +109,7 @@ def lets_go(
 
 
 def main():
-    """Main entry of the LetsGo game.
+    """Main entry of the lets-go game.
 
     Detects the terminal environment and setup a game view for playing.
 

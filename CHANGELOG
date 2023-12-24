@@ -1,2 +1,4 @@
+0.1.1 Current release
+  + add more description about project in README.md.
 0.1.0 Current release
-  * First release, basic rules supported, has only a board grid to move stones.
+  + First release, basic rules supported, has only a board grid to move stones.

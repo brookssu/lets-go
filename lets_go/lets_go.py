@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #   Copyright 2023 Brooks Su
@@ -22,24 +21,20 @@ No AI, no GTP, no joseki, no kifu, no tsumego, just playing for fun.
 
 import os
 
-import color256 as co
-from color256 import Color
-import cursor
-import termkey
-from termkey import Key
-from unicon import UnicodeIcon as UIcon
+import ltermio
+from ltermio import Color, Key, UIcon
 
-import go_arbitor as goa
-import go_board as gob
+from .go_arbitor import GoArbitor
+from .go_board import CursorGoBoard, TextBar
 
 
 STONES = (UIcon.BLACK_CIRCLE, UIcon.WHITE_CIRCLE)
 
 
 def lets_go(
-    board: gob.CursorGoBoard,
-    text_bar: gob.TextBar,
-    arbitor: goa.GoArbitor
+    board: CursorGoBoard,
+    text_bar: TextBar,
+    arbitor: GoArbitor
 ):
     """Receives keyboard input to determine what to do.
 
@@ -96,7 +91,7 @@ def lets_go(
     state_row = text_bar.add_blank_row()  # locate a row for state update
     text_bar.add_blank_row()
 
-    key = termkey.getkey()
+    key = ltermio.getkey()
     while key != Key.CONTROL_X:
         if key_funcs.get(key, lambda: False)():
             c_moves, cur_stone, cps, komi = arbitor.game_state
@@ -105,9 +100,10 @@ def lets_go(
                 f'Current Move: {STONES[cur_stone]}       '
                 f'Captures: {STONES[0]} {cps[0]:<3d} {STONES[1]} {cps[1]:<3d}'
                 f' Komi: {komi}')
-        key = termkey.getkey()
+        key = ltermio.getkey()
 
 
+@ltermio.appentry
 def main():
     """Main entry of the lets-go game.
 
@@ -122,29 +118,15 @@ def main():
     o_row = (scr_height - 36) // 2 - 2
     o_col = (scr_width - 72) // 2
 
-    cursor.switch_screen()
-    cursor.clear_screen()
-    cursor.hide_cursor()
-    termkey.setparams(echo=False, intr=False)
+    board = CursorGoBoard(o_row, o_col)
+    text_bar = board.text_bar_on()
+    text_bar.color_scheme((Color.DEEP_KHAKI, Color.COFFEE,
+                           Color.BLACK, Color.BRONZE))
+    ltermio.set_color(Color.BLACK, Color.BRONZE)
+    board.refresh()
+    board.show_coordinate_bar()
+    board.cursor_on()
+    arbitor = GoArbitor()
 
-    try:
-        board = gob.CursorGoBoard(o_row, o_col)
-        text_bar = board.text_bar_on()
-        text_bar.color_scheme((Color.DEEP_KHAKI, Color.COFFEE,
-                               Color.BLACK, Color.BRONZE))
-        co.set_color(Color.BLACK, Color.BRONZE)
-        board.refresh()
-        board.show_coordinate_bar()
-        board.cursor_on()
-        arbitor = goa.GoArbitor()
-
-        lets_go(board, text_bar, arbitor)
-    finally:
-        termkey.setparams()
-        co.reset_color()
-        cursor.show_cursor()
-        cursor.restore_screen()
-
-
-if __name__ == '__main__':
-    main()
+    lets_go(board, text_bar, arbitor)
+    ltermio.reset_color()

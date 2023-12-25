@@ -31,10 +31,7 @@ import functools
 import time
 from wcwidth import wcswidth
 
-from cursor import putmsg
-import color256 as co
-from color256 import Color
-from unicon import UnicodeIcon as UIcon
+from ltermio import putmsg, set_color, Color, UIcon
 
 
 _CROSS = '\u253c'
@@ -419,10 +416,10 @@ class TextBar:
 
     def _putmsg(self, row: int, msg: str):
         if self._color_scheme:
-            co.set_color(self._color_scheme[0], self._color_scheme[1])
+            set_color(self._color_scheme[0], self._color_scheme[1])
         putmsg(self._o_row + row, self._o_col, msg)
         if self._color_scheme:
-            co.set_color(self._color_scheme[2], self._color_scheme[3])
+            set_color(self._color_scheme[2], self._color_scheme[3])
 
 
     def add_blank_row(self) -> int:

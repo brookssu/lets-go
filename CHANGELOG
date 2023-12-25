@@ -1,4 +1,7 @@
-0.1.2 Current release
+0.2.1 Current release
+  * Re-implement _check_alive() method as a public function check_alive().
+  * Change build backend from setuptools to hatchling.
+0.1.2
   * Change Move from normal class to data class.
 0.1.1
   + add more description about project in README.md.

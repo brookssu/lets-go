@@ -41,11 +41,7 @@ class Move:
     _c_stones: int
 
 
-    def is_identical_grid(
-        self,
-        grid: list[list[int]],
-        c_stones: int,
-    ) -> bool:
+    def is_identical_grid(self, grid: list[list[int]], c_stones: int) -> bool:
         """To check if a given grid is exactly same as this moves'.
 
         Args:
@@ -61,6 +57,37 @@ class Move:
 
 def _gridcopy(grid):
     return [line.copy() for line in grid]
+
+
+def check_alive(grid, row, col, stone, captures):
+    """Dectects alive state of a group of connected stones.
+
+    Returns:
+        True if the group of stones have liberties. Otherwise returns False
+        with all stones be stored in captures.
+        Functions does not clear the set flags on checked stones when return,
+        for efficiecy of multi-times checking.
+    """
+    if not (0 <= row < len(grid) and 0 <= col < len(grid)):
+        return False
+    if (grid[row][col] is None or
+        (grid[row][col] & _STONE_MASK == stone and grid[row][col] & _ALIVE)
+        ):  # a liberty or an alive stone in same camp
+        captures.clear()
+        return True
+    if grid[row][col] != stone:  # opposite or checked stone
+        return False
+    grid[row][col] |= _CHECKED
+
+    if (check_alive(grid, row, col - 1, stone, captures) or
+            check_alive(grid, row - 1, col, stone, captures) or
+            check_alive(grid, row, col + 1, stone, captures) or
+            check_alive(grid, row + 1, col, stone, captures)):
+        grid[row][col] |= _ALIVE
+        return True
+
+    captures.append((row, col))
+    return False
 
 
 class GoArbitor:
@@ -81,52 +108,19 @@ class GoArbitor:
         self._c_captures = [0, 0]   # [balck, white]
         self._komi = komi
 
-    # pylint: disable=too-many-arguments
-    def _check_alive(self, grid, row, col, stone, captures=None):
-        # Dectects alive state of a group of connected stones by recursion.
-        # Dead stones will be stored in captures.
-        #
-        if not (0 <= row < len(grid) and 0 <= col < len(grid)):
-            return False
-        cur = grid[row][col]
-        if cur is None:     # there is a liberty
-            return True
-        if cur != stone:    # opposite or checked stone
-            if (cur & _STONE_MASK == stone) and (cur & _ALIVE):
-                # A same camp stone has been checked and proved alive.
-                return True
-            return False
-        grid[row][col] |= _CHECKED
-
-        if (self._check_alive(grid, row, col - 1, stone, captures) or
-                self._check_alive(grid, row - 1, col, stone, captures) or
-                self._check_alive(grid, row, col + 1, stone, captures) or
-                self._check_alive(grid, row + 1, col, stone, captures)):
-            grid[row][col] |= _ALIVE
-            return True
-
-        if captures is not None:
-            captures.append((row, col))
-        return False
-
-
     def _check_around(self, grid, row, col, stone):
         # Checks opposite stones around the current, returns captures if
         # any of them aren't alive any more.
         #
-        left_cpts = []
-        if self._check_alive(grid, row, col - 1, stone, left_cpts):
-            left_cpts.clear()
-        upper_cpts = []
-        if self._check_alive(grid, row - 1, col, stone, upper_cpts):
-            upper_cpts.clear()
-        right_cpts = []
-        if self._check_alive(grid, row, col + 1, stone, right_cpts):
-            right_cpts.clear()
-        lower_cpts = []
-        if self._check_alive(grid, row + 1, col, stone, lower_cpts):
-            lower_cpts.clear()
-        return left_cpts + upper_cpts + right_cpts + lower_cpts
+        left_cps = []
+        check_alive(grid, row, col - 1, stone, left_cps)
+        upper_cps = []
+        check_alive(grid, row - 1, col, stone, upper_cps)
+        right_cps = []
+        check_alive(grid, row, col + 1, stone, right_cps)
+        lower_cps = []
+        check_alive(grid, row + 1, col, stone, lower_cps)
+        return left_cps + upper_cps + right_cps + lower_cps
 
 
     def _take_back(self, row, col, captures):
@@ -146,12 +140,11 @@ class GoArbitor:
         cur, opp = self._cur_stone, not self._cur_stone
 
         # Checks alive states of current and surrounding opposite stones.
-        grid = [r.copy() for r in self._grid]
+        grid = _gridcopy(self._grid)
         grid[row][col] = cur
         captures = self._check_around(grid, row, col, opp)
-        if not self._check_alive(grid, row, col, cur) and not captures:
-            # A prohibited point for suicide.
-            return None
+        if not check_alive(grid, row, col, cur, []) and not captures:
+            return None  # prohibits suicide.
 
         # Makes change
         for point in captures:
@@ -161,9 +154,8 @@ class GoArbitor:
 
         # Checks identical situation
         c_stones = len(self._moves) + 1 - sum(self._c_captures)
-        for i in range(len(self._moves) - 1, -1, -1):
-            if self._moves[i].is_identical_grid(
-                    self._grid, c_stones):
+        for move in reversed(self._moves):
+            if move.is_identical_grid(self._grid, c_stones):
                 # Rollback for prohibition of the identical situation.
                 self._take_back(row, col, captures)
                 return None

@@ -129,4 +129,3 @@ def main():
     arbitor = GoArbitor()
 
     lets_go(board, text_bar, arbitor)
-    ltermio.reset_color()

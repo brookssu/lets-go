@@ -27,7 +27,7 @@ classifiers = [
     'Topic :: Games/Entertainment',
     'Topic :: Games/Entertainment :: Board Games',
 ]
-dependencies = ['ltermio >= 0.3.1',]
+dependencies = ['ltermio >= 0.3.2',]
 dynamic = ['version',]
 
 [project.urls]

@@ -63,10 +63,10 @@ def check_alive(grid, row, col, stone, captures):
     """Dectects alive state of a group of connected stones.
 
     Returns:
-        True if the group of stones have liberties. Otherwise returns False
-        with all stones be stored in captures.
-        Functions does not clear the set flags on checked stones when return,
-        for efficiecy of multi-times checking.
+        True if the group of stones have liberties. Otherwise returns
+        False with all stones be stored in captures.
+        Functions does not clear the set flags on checked stones when
+        return, for efficiecy of multi-times checking.
     """
     if not (0 <= row < len(grid) and 0 <= col < len(grid)):
         return False
@@ -107,6 +107,7 @@ class GoArbitor:
         self._cur_stone = first_move
         self._c_captures = [0, 0]   # [balck, white]
         self._komi = komi
+
 
     def _check_around(self, grid, row, col, stone):
         # Checks opposite stones around the current, returns captures if

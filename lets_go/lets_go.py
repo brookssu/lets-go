@@ -22,7 +22,7 @@ No AI, no GTP, no joseki, no kifu, no tsumego, just playing for fun.
 import os
 
 import ltermio
-from ltermio import Color, Key, UIcon
+from ltermio import Color, Key, MouseEvent, UIcon
 
 from .go_arbitor import GoArbitor
 from .go_board import CursorGoBoard, TextBar
@@ -99,7 +99,7 @@ def lets_go(
     state_row = text_bar.add_blank_row()  # locate a row for state update
     text_bar.add_blank_row()
 
-    ltermio.set_mouse_mask(ltermio.MB1_CLICKED)
+    ltermio.set_mouse_mask(MouseEvent.B1_CLICKED)
     key = ltermio.getkey()
     while key != Key.CONTROL_X:
         if key_funcs.get(key, lambda: (on_clicked(key)

@@ -612,7 +612,7 @@ class CursorGoBoard(GoBoard):
 
 
     def text_bar_on(self) -> TextBar:
-        """Turn on the TextBar which under the board to display message.
+        """Turns on the TextBar which under the board to display message.
 
         Returns:
             The instance of the TextBar.

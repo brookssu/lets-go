@@ -133,10 +133,11 @@ class GoArbitor:
 
 
     def try_move(self, row: int, col: int) -> Move | None:
-        """Try to make a move on a coordinate of the grid, returns the
-        move record if success, otherwise returns None.
+        """Tries to make a move on the specified coordinate of the grid,
+        returns the move record if success, otherwise returns None.
         """
-        if self._grid[row][col] is not None:
+        if not (0 <= row < len(self._grid) and 0 <= col < len(self._grid)
+                and self._grid[row][col] is None):
             return None
         cur, opp = self._cur_stone, not self._cur_stone
 
@@ -169,8 +170,8 @@ class GoArbitor:
 
 
     def undo(self) -> Move | None:
-        """Takes back a move from the game. Returns the move record on
-        success, returns None if there aren't any moves.
+        """Takes back the last move from the game. Returns the move record
+        on success, returns None if there aren't any moves.
         """
         if self._moves:
             move = self._moves.pop()
@@ -182,8 +183,8 @@ class GoArbitor:
 
 
     def pass_move(self) -> Move:
-        """Makes a pass move. Always successly returns a move record
-        with coordinate of (-1, -1).
+        """Makes a pass move. Always successly returns a move record with
+        coordinate of (-1, -1).
         """
         self._moves.append(Move(None, -1, -1, self._cur_stone, None, 0))
         self._cur_stone = not self._cur_stone

@@ -36,20 +36,21 @@ def lets_go(
     text_bar: TextBar,
     arbitor: GoArbitor
 ):
-    """Receives keyboard input to determine what to do.
+    """Continuously reads key from keyboard, and dispatchs key events to
+    appropriate functions.
 
     It is the controller of the game, uses GoBoard as the game view and
-    GoArbitor as the logic and rule processor. This mode is well known as
-    MVC.
+    GoArbitor as the backend service. This mode is well known as MVC.
     """
-    def try_move():
-        move = arbitor.try_move(board.cur_row, board.cur_col)
+    def try_move(row, col):
+        move = arbitor.try_move(row, col)
         if move:
-            board.elem_in(board.cur_row, board.cur_col, STONES[move.stone])
+            board.elem_in(row, col, STONES[move.stone])
             for point in move.captures:
                 board.elem_out(point[0], point[1])
             return True
         return False
+
 
     def undo_move():
         move = arbitor.undo()
@@ -61,8 +62,15 @@ def lets_go(
             return True
         return False
 
+
+    def on_clicked(code: int):
+        _, row, col, _ = ltermio.decode_mouse_event(code)
+        row, col = board.trans_screen_co(row, col)
+        return try_move(row, col)
+
+
     key_funcs = {
-        Key.SPACE: try_move,
+        Key.SPACE: (lambda: try_move(board.cur_row, board.cur_col)),
         Key.UP: board.cursor_up,
         Key.DOWN: board.cursor_down,
         Key.RIGHT: board.cursor_right,
@@ -91,9 +99,12 @@ def lets_go(
     state_row = text_bar.add_blank_row()  # locate a row for state update
     text_bar.add_blank_row()
 
+    ltermio.set_mouse_mask(ltermio.MB1_CLICKED)
     key = ltermio.getkey()
     while key != Key.CONTROL_X:
-        if key_funcs.get(key, lambda: False)():
+        if key_funcs.get(key, lambda: (on_clicked(key)
+                                       if key > Key.MOUSE_EVENT else
+                                       False))():
             c_moves, cur_stone, cps, komi = arbitor.game_state
             text_bar.update_row(state_row,
                 f'Moves: {c_moves:<3d}    '
@@ -103,7 +114,7 @@ def lets_go(
         key = ltermio.getkey()
 
 
-@ltermio.appentry
+@ltermio.appentry(mouse=True)
 def main():
     """Main entry of the lets-go game.
 

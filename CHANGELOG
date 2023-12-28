@@ -1,4 +1,6 @@
-0.3.1 Current release
+0.3.2 Current release
+  * Replace ltermio.appentry() with ltermio.appentry_args().
+0.3.1
   * Lightly modify code for ltermio changed mouse event definition.
 0.3.0
   + Handle mouse clicked event, for ltermio has new module to support mouse.

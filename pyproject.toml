@@ -20,14 +20,16 @@ classifiers = [
     'Operating System :: Unix',
     'Operating System :: POSIX',
     'Operating System :: MacOS :: MacOS X',
-    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
     'Environment :: Console',
     'Development Status :: 2 - Pre-Alpha',
     'Intended Audience :: End Users/Desktop',
     'Topic :: Games/Entertainment',
     'Topic :: Games/Entertainment :: Board Games',
 ]
-dependencies = ['ltermio >= 0.4.8',]
+dependencies = ['ltermio >= 0.5.2',]
 dynamic = ['version',]
 
 [project.urls]

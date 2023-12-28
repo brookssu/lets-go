@@ -114,7 +114,7 @@ def lets_go(
         key = ltermio.getkey()
 
 
-@ltermio.appentry(mouse=True)
+@ltermio.appentry_args(mouse=True)
 def main():
     """Main entry of the lets-go game.
 

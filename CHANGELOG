@@ -1,4 +1,6 @@
-0.3.5 Current release
+0.3.6 Current release
+  + Add clicked event of mouse right button to undo moves.
+0.3.5
   + Add scrolling moves by wheel mouse and shift+arrow.
 0.3.2
   * Replace ltermio.appentry() with ltermio.appentry_args().

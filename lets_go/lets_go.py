@@ -64,6 +64,8 @@ def lets_go(
         row, col = board.trans_screen_co(row, col)
         if event == MouseEvent.B_LEFT_CLICKED:
             return place_move(backend.try_move(row, col))
+        if event == MouseEvent.B_RIGHT_CLICKED:
+            return takeback_move(backend.undo()),
         if event == MouseEvent.B_SCROLL_FORW:
             return place_move(backend.scroll_forw())
         if event == MouseEvent.B_SCROLL_BACK:
@@ -115,6 +117,7 @@ def lets_go(
     state_row = text_bar.add_blank_row()  # locate a row for state update
 
     ltermio.set_mouse_mask(MouseEvent.B_LEFT_CLICKED |
+                           MouseEvent.B_RIGHT_CLICKED |
                            MouseEvent.B_SCROLL_BACK |
                            MouseEvent.B_SCROLL_FORW)
     key = ltermio.getkey()

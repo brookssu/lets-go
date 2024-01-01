@@ -21,4 +21,4 @@ Homepage - https://github.com/brookssu/lets-go
 
 from .lets_go import main
 
-__version__ = '0.3.5'
+__version__ = '0.3.6'

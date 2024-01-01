@@ -61,15 +61,16 @@ def lets_go(
         return False
 
     def on_mouse(event, row, col, modifiers):
-        row, col = board.trans_screen_co(row, col)
-        if event == MouseEvent.B_LEFT_CLICKED:
-            return place_move(backend.try_move(row, col))
-        if event == MouseEvent.B_RIGHT_CLICKED:
-            return takeback_move(backend.undo()),
-        if event == MouseEvent.B_SCROLL_FORW:
-            return place_move(backend.scroll_forw())
-        if event == MouseEvent.B_SCROLL_BACK:
-            return takeback_move(backend.scroll_back())
+        if not modifiers:
+            row, col = board.trans_screen_co(row, col)
+            if event == MouseEvent.B_LEFT_CLICKED:
+                return place_move(backend.try_move(row, col))
+            if event == MouseEvent.B_RIGHT_CLICKED:
+                return takeback_move(backend.undo())
+            if event == MouseEvent.B_SCROLL_FORW:
+                return place_move(backend.scroll_forw())
+            if event == MouseEvent.B_SCROLL_BACK:
+                return takeback_move(backend.scroll_back())
         return False
 
     key_funcs = {

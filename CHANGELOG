@@ -1,4 +1,6 @@
-0.3.6 Current release
+0.3.7 Current release
+  * Fix incorrect stone count.
+0.3.6
   + Add clicked event of mouse right button to undo moves.
 0.3.5
   + Add scrolling moves by wheel mouse and shift+arrow.

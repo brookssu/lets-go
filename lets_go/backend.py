@@ -72,12 +72,13 @@ def check_alive(grid, row, col, stone, captures):
     """
     if not (0 <= row < len(grid) and 0 <= col < len(grid)):
         return False
-    if (grid[row][col] is None or
-        (grid[row][col] & _STONE_MASK == stone and grid[row][col] & _ALIVE)
-        ):  # a liberty or an alive stone in same camp
+
+    cur = grid[row][col]
+    if (cur is None or (cur & _STONE_MASK == stone and cur & _ALIVE)):
+        # A liberty or an checked alive stone in the same camp
         captures.clear()
         return True
-    if grid[row][col] != stone:  # opposite or checked stone
+    if cur != stone:  # opposite or checked stone
         return False
     grid[row][col] |= _CHECKED
 
@@ -112,7 +113,7 @@ class GoBackend:
 
     def _check_around(self, grid, row, col, stone):
         # Checks opposite stones around the current, returns captures if
-        # any of them aren't alive any more.
+        # any of them aren't alive.
         #
         left_cpts = []
         check_alive(grid, row, col - 1, stone, left_cpts)
@@ -159,8 +160,8 @@ class GoBackend:
         grid[row][col] = cur
 
         # Checks identical situation
-        c_stones = len(self._moves) - cpts_count[0] - cpts_count[1]
-        for move in reversed(self._moves):
+        c_stones = self._pointer + 1 - cpts_count[0] - cpts_count[1]
+        for move in reversed(self._moves[:self._pointer]):
             if move.is_identical_grid(grid, c_stones):
                 # prohibition of the identical situation.
                 return None

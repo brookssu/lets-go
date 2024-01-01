@@ -22,10 +22,10 @@ No AI, no GTP, no joseki, no kifu, no tsumego, just playing for fun.
 import os
 
 import ltermio
-from ltermio import Color, Key, MouseEvent, UIcon
+from ltermio import Color, TextAttr, Key, MouseEvent, UIcon
 
-from .go_arbitor import GoArbitor
-from .go_board import CursorGoBoard, TextBar
+from .backend import GoBackend
+from .board import CursorGoBoard, TextBar
 
 
 STONES = (UIcon.BLACK_CIRCLE, UIcon.WHITE_CIRCLE)
@@ -34,47 +34,52 @@ STONES = (UIcon.BLACK_CIRCLE, UIcon.WHITE_CIRCLE)
 def lets_go(
     board: CursorGoBoard,
     text_bar: TextBar,
-    arbitor: GoArbitor
+    backend: GoBackend
 ):
     """Continuously reads key from keyboard, and dispatchs key events to
     appropriate functions.
 
     It is the controller of the game, uses GoBoard as the game view and
-    GoArbitor as the backend service. This mode is well known as MVC.
+    GoBackend as the backend service. This mode is well known as MVC.
     """
-    def try_move(row, col):
-        move = arbitor.try_move(row, col)
+    def place_move(move):
         if move:
-            board.elem_in(row, col, STONES[move.stone])
-            for point in move.captures:
-                board.elem_out(point[0], point[1])
+            if move.row >= 0:   # not a pass move
+                board.elem_in(move.row, move.col, STONES[move.stone])
+                for point in move.cur_cpts:
+                    board.elem_out(point[0], point[1])
             return True
         return False
 
-
-    def undo_move():
-        move = arbitor.undo()
+    def takeback_move(move):
         if move:
             if move.row >= 0:   # not a pass move
-                for point in move.captures:
+                for point in move.cur_cpts:
                     board.elem_in(point[0], point[1], STONES[not move.stone])
                 board.elem_out(move.row, move.col)
             return True
         return False
 
-
-    def on_clicked(code: int):
-        _, row, col, _ = ltermio.decode_mouse_event(code)
+    def on_mouse(event, row, col, modifiers):
         row, col = board.trans_screen_co(row, col)
-        return try_move(row, col)
-
+        if event == MouseEvent.B_LEFT_CLICKED:
+            return place_move(backend.try_move(row, col))
+        if event == MouseEvent.B_SCROLL_FORW:
+            return place_move(backend.scroll_forw())
+        if event == MouseEvent.B_SCROLL_BACK:
+            return takeback_move(backend.scroll_back())
+        return False
 
     key_funcs = {
-        Key.SPACE: (lambda: try_move(board.cur_row, board.cur_col)),
+        Key.SPACE: lambda: place_move(
+            backend.try_move(board.cur_row, board.cur_col)
+            ),
         Key.UP: board.cursor_up,
         Key.DOWN: board.cursor_down,
         Key.RIGHT: board.cursor_right,
         Key.LEFT: board.cursor_left,
+        Key.RIGHT + Key.SHIFT: lambda: place_move(backend.scroll_forw()),
+        Key.LEFT + Key.SHIFT: lambda: takeback_move(backend.scroll_back()),
         ord('h'): board.cursor_left,
         ord('l'): board.cursor_right,
         ord('k'): board.cursor_up,
@@ -88,29 +93,43 @@ def lets_go(
         ord('0'): board.cursor_leftmost,
         ord('$'): board.cursor_rightmost,
         ord('M'): board.cursor_center,
-        Key.ESC: arbitor.pass_move,
-        Key.DEL: undo_move,
-        ord('u'): undo_move,
+        Key.ESC: backend.pass_move,
+        Key.DEL: lambda: takeback_move(backend.undo()),
+        ord('u'): lambda: takeback_move(backend.undo()),
     }
 
+    ltermio.set_textattr(TextAttr.BOLD)
     text_bar.add_blank_row()
-    text_bar.add_text_row('SPACE: move   VI-KEYS: move cursor   '
-                          'ESC: pass   DEL: undo   CTRL-X: exit')
+    text_bar.add_text_row(f'Move - {UIcon.MOUSE} LEFT, SPACE       '
+                          f'Cursor - {UIcon.LEFT_ARROW} {UIcon.UP_ARROW} '
+                          f'{UIcon.RIGHT_ARROW} {UIcon.DOWN_ARROW}      '
+                          '        Pass - ESC')
+    text_bar.add_text_row(
+            f'Undo - {UIcon.MOUSE} RIGHT, DEL        '
+            f'Scroll - {UIcon.MOUSE} WHEEL, '
+            f'{UIcon.SHIFT}{UIcon.LEFT_ARROW} '
+            f'{UIcon.SHIFT}{UIcon.RIGHT_ARROW}       '
+            'Exit - CONTROL-X')
+#    ltermio.set_textattr(TextAttr.NORMAL)
+    text_bar.add_blank_row()
     state_row = text_bar.add_blank_row()  # locate a row for state update
-    text_bar.add_blank_row()
 
-    ltermio.set_mouse_mask(MouseEvent.B1_CLICKED)
+    ltermio.set_mouse_mask(MouseEvent.B_LEFT_CLICKED |
+                           MouseEvent.B_SCROLL_BACK |
+                           MouseEvent.B_SCROLL_FORW)
     key = ltermio.getkey()
     while key != Key.CONTROL_X:
-        if key_funcs.get(key, lambda: (on_clicked(key)
-                                       if key > Key.MOUSE_EVENT else
-                                       False))():
-            c_moves, cur_stone, cps, komi = arbitor.game_state
+        if key_funcs.get(key,
+                         lambda: (on_mouse(*ltermio.decode_mouse_event(key))
+                                  if key > Key.MOUSE_EVENT else
+                                  False)
+                         )():
+            c_moves, cur_stone, cps, komi = backend.game_state
             text_bar.update_row(state_row,
-                f'Moves: {c_moves:<3d}    '
-                f'Current Move: {STONES[cur_stone]}       '
-                f'Captures: {STONES[0]} {cps[0]:<3d} {STONES[1]} {cps[1]:<3d}'
-                f' Komi: {komi}')
+                f'Moves - {c_moves:<3d}   '
+                f'Current Move - {STONES[cur_stone]}    '
+                f'Captures - {STONES[0]} {cps[0]:<3d} {STONES[1]} {cps[1]:<3d}'
+                f'    Komi - {komi}')
         key = ltermio.getkey()
 
 
@@ -124,8 +143,8 @@ def main():
         EnvironmentError: Screen too small to fit game.
     """
     scr_width, scr_height = os.get_terminal_size()
-    if scr_width < 80 or scr_height < 43:
-        raise EnvironmentError('Screen too small to fit game, 80x43 required.')
+    if scr_width < 80 or scr_height < 45:
+        raise EnvironmentError('Screen too small to fit game, 80x45 required.')
     o_row = (scr_height - 36) // 2 - 2
     o_col = (scr_width - 72) // 2
 
@@ -137,6 +156,9 @@ def main():
     board.refresh()
     board.show_coordinate_bar()
     board.cursor_on()
-    arbitor = GoArbitor()
+    backend = GoBackend()
 
-    lets_go(board, text_bar, arbitor)
+    lets_go(board, text_bar, backend)
+
+if __name__ == '__main__':
+    main()

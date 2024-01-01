@@ -14,7 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""A GoArbitor class to record moves of Go game, and determine if the
+"""A GoBackend class to record moves of Go game, and determine if the
 moves on the game grid are valid.
 """
 
@@ -33,12 +33,13 @@ _CHECKED = 0x80
 class Move:
     """Record of one move of the Go game.
     """
+    num: int
     grid: list[list[int]] | None
     row: int
     col: int
     stone: int
-    captures: list[tuple[int, int]] | None
-    _c_stones: int
+    cur_cpts: list[tuple[int, int]] | None
+    cpts_count: list[int]
 
 
     def is_identical_grid(self, grid: list[list[int]], c_stones: int) -> bool:
@@ -52,7 +53,8 @@ class Move:
             True if the grid completely identical with this moves',
             otherwise False.
         """
-        return self._c_stones == c_stones and self.grid == grid
+        return (self.num - self.cpts_count[0] - self.cpts_count[1] == c_stones
+                and self.grid == grid)
 
 
 def _gridcopy(grid):
@@ -90,8 +92,8 @@ def check_alive(grid, row, col, stone, captures):
     return False
 
 
-class GoArbitor:
-    """A Go game arbitor to record moves and determine whether they are
+class GoBackend:
+    """A Go game backend to record moves and determine whether they are
     valid.
     """
     def __init__(
@@ -100,12 +102,11 @@ class GoArbitor:
         first_move: int = BLACK_STONE,
         komi: float = 7.5
     ):
-        """Initializes arbitor with parameters of the game info.
+        """Initializes backend with parameters of the game info.
         """
-        self._moves = []
-        self._grid = [[None for _ in range(size)] for _ in range(size)]
-        self._cur_stone = first_move
-        self._c_captures = [0, 0]   # [balck, white]
+        grid = [[None for _ in range(size)] for _ in range(size)]
+        self._moves = [Move(0, grid, -1, -1, not first_move, None, [0, 0])]
+        self._pointer = 0
         self._komi = komi
 
 
@@ -113,71 +114,72 @@ class GoArbitor:
         # Checks opposite stones around the current, returns captures if
         # any of them aren't alive any more.
         #
-        left_cps = []
-        check_alive(grid, row, col - 1, stone, left_cps)
-        upper_cps = []
-        check_alive(grid, row - 1, col, stone, upper_cps)
-        right_cps = []
-        check_alive(grid, row, col + 1, stone, right_cps)
-        lower_cps = []
-        check_alive(grid, row + 1, col, stone, lower_cps)
-        return left_cps + upper_cps + right_cps + lower_cps
+        left_cpts = []
+        check_alive(grid, row, col - 1, stone, left_cpts)
+        upper_cpts = []
+        check_alive(grid, row - 1, col, stone, upper_cpts)
+        right_cpts = []
+        check_alive(grid, row, col + 1, stone, right_cpts)
+        lower_cpts = []
+        check_alive(grid, row + 1, col, stone, lower_cpts)
+        return left_cpts + upper_cpts + right_cpts + lower_cpts
 
 
-    def _take_back(self, row, col, captures):
-        opp_stone = not self._grid[row][col]
-        self._grid[row][col] = None
-        for point in captures:
-            self._grid[point[0]][point[1]] = opp_stone
-        self._c_captures[opp_stone] -= len(captures)
+    def _new_move(self, move):
+        self._pointer = move.num
+        if len(self._moves) != self._pointer:
+            self._moves = self._moves[:self._pointer]
+        self._moves.append(move)
+        return move
 
 
     def try_move(self, row: int, col: int) -> Move | None:
         """Tries to make a move on the specified coordinate of the grid,
         returns the move record if success, otherwise returns None.
         """
-        if not (0 <= row < len(self._grid) and 0 <= col < len(self._grid)
-                and self._grid[row][col] is None):
+        last = self._moves[self._pointer]
+        if not (0 <= row < len(last.grid) and 0 <= col < len(last.grid)
+                and last.grid[row][col] is None):
             return None
-        cur, opp = self._cur_stone, not self._cur_stone
+        cur, opp = not last.stone, last.stone
 
         # Checks alive states of current and surrounding opposite stones.
-        grid = _gridcopy(self._grid)
+        grid = _gridcopy(last.grid)
         grid[row][col] = cur
         captures = self._check_around(grid, row, col, opp)
         if not check_alive(grid, row, col, cur, []) and not captures:
             return None  # prohibits suicide.
 
-        # Makes change
+        # Makes change on a new grid
+        grid = _gridcopy(last.grid)
         for point in captures:
-            self._grid[point[0]][point[1]] = None
-        self._c_captures[opp] += len(captures)
-        self._grid[row][col] = cur
+            grid[point[0]][point[1]] = None
+        cpts_count = last.cpts_count.copy()
+        cpts_count[opp] += len(captures)
+        grid[row][col] = cur
 
         # Checks identical situation
-        c_stones = len(self._moves) + 1 - sum(self._c_captures)
+        c_stones = len(self._moves) - cpts_count[0] - cpts_count[1]
         for move in reversed(self._moves):
-            if move.is_identical_grid(self._grid, c_stones):
-                # Rollback for prohibition of the identical situation.
-                self._take_back(row, col, captures)
+            if move.is_identical_grid(grid, c_stones):
+                # prohibition of the identical situation.
                 return None
 
         # Commits change
-        self._moves.append(
-                Move(_gridcopy(self._grid), row, col, cur, captures, c_stones))
-        self._cur_stone = not self._cur_stone
-        return self._moves[-1]
+        return self._new_move(
+                Move(self._pointer + 1, grid, row, col, cur,
+                     captures, cpts_count)
+                )
 
 
     def undo(self) -> Move | None:
         """Takes back the last move from the game. Returns the move record
         on success, returns None if there aren't any moves.
         """
-        if self._moves:
-            move = self._moves.pop()
-            if move.row >= 0:   # not a pass move
-                self._take_back(move.row, move.col, move.captures)
-            self._cur_stone = not self._cur_stone
+        if self._pointer > 0:
+            move = self._moves[self._pointer]
+            self._moves = self._moves[:self._pointer]
+            self._pointer -= 1
             return move
         return None
 
@@ -186,9 +188,43 @@ class GoArbitor:
         """Makes a pass move. Always successly returns a move record with
         coordinate of (-1, -1).
         """
-        self._moves.append(Move(None, -1, -1, self._cur_stone, None, 0))
-        self._cur_stone = not self._cur_stone
-        return self._moves[-1]
+        last = self._moves[self._pointer]
+        return self._new_move(
+                Move(last.num + 1, last.grid, -1, -1, not last.stone,
+                     None, last.cpts_count)
+                )
+
+
+    def scroll_back(self) -> Move | None:
+        """Scrolls backward one move.
+
+        The scrolling operation does not actually change the moves on the
+        grid, but just change the insertion pointer of the moves.
+
+        Returns:
+            The move which was current before scrolled. Returns None if
+            there are no more moves(original grid).
+        """
+        if self._pointer > 0:
+            self._pointer -= 1
+            return self._moves[self._pointer + 1]
+        return None
+
+
+    def scroll_forw(self) -> Move | None:
+        """Scrolls forward one move.
+
+        The scrolling operation does not actually change the moves on the
+        grid, but just change the insertion pointer of the moves.
+
+        Returns:
+            The current move after scrolled. Returns None if it has gone
+            to the end of the moves.
+        """
+        if self._pointer < len(self._moves) - 1:
+            self._pointer += 1
+            return self._moves[self._pointer]
+        return None
 
 
     @property
@@ -201,4 +237,5 @@ class GoArbitor:
             komi: float
             )
         """
-        return len(self._moves), self._cur_stone, self._c_captures, self._komi
+        move = self._moves[self._pointer]
+        return move.num, not move.stone, move.cpts_count, self._komi

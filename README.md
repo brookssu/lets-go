@@ -12,4 +12,4 @@ I wrote the game only for an idea of verifing **ltermio** package, maybe there w
 
 ## Experience
 Alrough I added **VI** like keys supporting for cursor moving, the experience of the game based on keyboard is still not good.
-**ltermio** has supported mouse after version 0.4.6, lets-go followed up and indeed makes experience better, but mouse pointer shape is a bit problem.
+**ltermio** has supported mouse after version 0.4.6, lets-go followed up and indeed makes experience better, but mouse pointer shape is a bit of trouble.

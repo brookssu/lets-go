@@ -24,7 +24,7 @@ symbol elements.
 
 The class CursorGoBoard derives from GoBoard, additionally implements a
 cursor view on the board, and a text bar under the board. These kind of
-extensions are expected to support keyboard applications.
+extensions are expected to support pure keyboard applications.
 """
 
 import functools

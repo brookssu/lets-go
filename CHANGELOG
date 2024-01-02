@@ -1,4 +1,6 @@
-0.3.7 Current release
+0.3.8 Current release
+  * Restruct the lets_go module.
+0.3.7
   * Fix incorrect stone count.
 0.3.6
   + Add clicked event of mouse right button to undo moves.

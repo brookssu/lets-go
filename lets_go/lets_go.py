@@ -31,58 +31,99 @@ from .board import CursorGoBoard, TextBar
 STONES = (UIcon.BLACK_CIRCLE, UIcon.WHITE_CIRCLE)
 
 
-def lets_go(
-    board: CursorGoBoard,
-    text_bar: TextBar,
-    backend: GoBackend
-):
+def _place_move(board, move):
+    # Places a move on the board
+    if move:
+        if move.row >= 0:   # not a pass move
+            board.elem_in(move.row, move.col, STONES[move.stone])
+            for point in move.cur_cpts:
+                board.elem_out(point[0], point[1])
+        return True
+    return False
+
+
+def _takeback_move(board, move):
+    # Takebacks a move from the board
+    if move:
+        if move.row >= 0:   # not a pass move
+            for point in move.cur_cpts:
+                board.elem_in(point[0], point[1], STONES[not move.stone])
+            board.elem_out(move.row, move.col)
+        return True
+    return False
+
+
+def _init_text_bar(text_bar):
+    text_bar.color_scheme((Color.DEEP_KHAKI, Color.COFFEE,
+                           Color.BLACK, Color.BRONZE))
+    ltermio.set_textattr(TextAttr.BOLD)
+
+    text_bar.add_blank_row()
+    text_bar.add_text_row(f'Move - {UIcon.MOUSE} LEFT, SPACE       '
+                          f'Cursor - {UIcon.LEFT_ARROW} {UIcon.UP_ARROW} '
+                          f'{UIcon.RIGHT_ARROW} {UIcon.DOWN_ARROW}      '
+                          '        Pass - ESC')
+    text_bar.add_text_row(
+            f'Undo - {UIcon.MOUSE} RIGHT, DEL        '
+            f'Scroll - {UIcon.MOUSE} WHEEL, '
+            f'{UIcon.SHIFT}{UIcon.LEFT_ARROW} '
+            f'{UIcon.SHIFT}{UIcon.RIGHT_ARROW}       '
+            'Exit - CONTROL-X')
+    text_bar.add_blank_row()
+
+    return text_bar.add_blank_row()  # allocate a row for state updates
+
+
+def lets_go(board: CursorGoBoard, backend: GoBackend):
     """Continuously reads key from keyboard, and dispatchs key events to
     appropriate functions.
 
     It is the controller of the game, uses GoBoard as the game view and
     GoBackend as the backend service. This mode is well known as MVC.
     """
-    def place_move(move):
-        if move:
-            if move.row >= 0:   # not a pass move
-                board.elem_in(move.row, move.col, STONES[move.stone])
-                for point in move.cur_cpts:
-                    board.elem_out(point[0], point[1])
-            return True
-        return False
+    # Initializes game displaying
+    ltermio.set_color(Color.BLACK, Color.BRONZE)
+    board.refresh()
+    board.show_coordinate_bar()
+    board.cursor_on()
+    text_bar = board.text_bar_on()
+    state_row = _init_text_bar(text_bar)
 
-    def takeback_move(move):
-        if move:
-            if move.row >= 0:   # not a pass move
-                for point in move.cur_cpts:
-                    board.elem_in(point[0], point[1], STONES[not move.stone])
-                board.elem_out(move.row, move.col)
-            return True
-        return False
+    ltermio.set_mouse_mask(MouseEvent.B_LEFT_CLICKED |
+                           MouseEvent.B_RIGHT_CLICKED |
+                           MouseEvent.B_SCROLL_BACK |
+                           MouseEvent.B_SCROLL_FORW)
 
-    def on_mouse(event, row, col, modifiers):
+    def on_mouse_event(event, row, col, modifiers):
         if not modifiers:
             row, col = board.trans_screen_co(row, col)
             if event == MouseEvent.B_LEFT_CLICKED:
-                return place_move(backend.try_move(row, col))
+                return _place_move(board, backend.try_move(row, col))
             if event == MouseEvent.B_RIGHT_CLICKED:
-                return takeback_move(backend.undo())
+                return _takeback_move(board, backend.undo())
             if event == MouseEvent.B_SCROLL_FORW:
-                return place_move(backend.scroll_forw())
+                return _place_move(board, backend.scroll_forw())
             if event == MouseEvent.B_SCROLL_BACK:
-                return takeback_move(backend.scroll_back())
+                return _takeback_move(board, backend.scroll_back())
         return False
 
     key_funcs = {
-        Key.SPACE: lambda: place_move(
-            backend.try_move(board.cur_row, board.cur_col)
+        Key.SPACE: lambda: _place_move(
+            board, backend.try_move(board.cur_row, board.cur_col)
             ),
+        Key.SHIFT + Key.RIGHT: lambda: _place_move(
+            board, backend.scroll_forw()
+            ),
+        Key.SHIFT + Key.LEFT: lambda: _takeback_move(
+            board, backend.scroll_back()
+            ),
+        Key.ESC: backend.pass_move,
+        Key.DEL: lambda: _takeback_move(board, backend.undo()),
+        ord('u'): lambda: _takeback_move(board, backend.undo()),
         Key.UP: board.cursor_up,
         Key.DOWN: board.cursor_down,
         Key.RIGHT: board.cursor_right,
         Key.LEFT: board.cursor_left,
-        Key.RIGHT + Key.SHIFT: lambda: place_move(backend.scroll_forw()),
-        Key.LEFT + Key.SHIFT: lambda: takeback_move(backend.scroll_back()),
         ord('h'): board.cursor_left,
         ord('l'): board.cursor_right,
         ord('k'): board.cursor_up,
@@ -96,37 +137,14 @@ def lets_go(
         ord('0'): board.cursor_leftmost,
         ord('$'): board.cursor_rightmost,
         ord('M'): board.cursor_center,
-        Key.ESC: backend.pass_move,
-        Key.DEL: lambda: takeback_move(backend.undo()),
-        ord('u'): lambda: takeback_move(backend.undo()),
     }
-
-    ltermio.set_textattr(TextAttr.BOLD)
-    text_bar.add_blank_row()
-    text_bar.add_text_row(f'Move - {UIcon.MOUSE} LEFT, SPACE       '
-                          f'Cursor - {UIcon.LEFT_ARROW} {UIcon.UP_ARROW} '
-                          f'{UIcon.RIGHT_ARROW} {UIcon.DOWN_ARROW}      '
-                          '        Pass - ESC')
-    text_bar.add_text_row(
-            f'Undo - {UIcon.MOUSE} RIGHT, DEL        '
-            f'Scroll - {UIcon.MOUSE} WHEEL, '
-            f'{UIcon.SHIFT}{UIcon.LEFT_ARROW} '
-            f'{UIcon.SHIFT}{UIcon.RIGHT_ARROW}       '
-            'Exit - CONTROL-X')
-#    ltermio.set_textattr(TextAttr.NORMAL)
-    text_bar.add_blank_row()
-    state_row = text_bar.add_blank_row()  # locate a row for state update
-
-    ltermio.set_mouse_mask(MouseEvent.B_LEFT_CLICKED |
-                           MouseEvent.B_RIGHT_CLICKED |
-                           MouseEvent.B_SCROLL_BACK |
-                           MouseEvent.B_SCROLL_FORW)
     key = ltermio.getkey()
     while key != Key.CONTROL_X:
-        if key_funcs.get(key,
-                         lambda: (on_mouse(*ltermio.decode_mouse_event(key))
-                                  if key > Key.MOUSE_EVENT else
-                                  False)
+        if key_funcs.get(key, lambda: (
+                             on_mouse_event(*ltermio.decode_mouse_event(key))
+                             if key > Key.MOUSE_EVENT else
+                             False
+                             )
                          )():
             c_moves, cur_stone, cps, komi = backend.game_state
             text_bar.update_row(state_row,
@@ -141,7 +159,7 @@ def lets_go(
 def main():
     """Main entry of the lets-go game.
 
-    Detects the terminal environment and setup a game view for playing.
+    Detects the terminal environment and sets board and backend for playing.
 
     Raises:
         EnvironmentError: Screen too small to fit game.
@@ -152,17 +170,8 @@ def main():
     o_row = (scr_height - 36) // 2 - 2
     o_col = (scr_width - 72) // 2
 
-    board = CursorGoBoard(o_row, o_col)
-    text_bar = board.text_bar_on()
-    text_bar.color_scheme((Color.DEEP_KHAKI, Color.COFFEE,
-                           Color.BLACK, Color.BRONZE))
-    ltermio.set_color(Color.BLACK, Color.BRONZE)
-    board.refresh()
-    board.show_coordinate_bar()
-    board.cursor_on()
-    backend = GoBackend()
+    lets_go(CursorGoBoard(o_row, o_col), GoBackend())
 
-    lets_go(board, text_bar, backend)
 
 if __name__ == '__main__':
     main()

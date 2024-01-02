@@ -7,7 +7,7 @@ Use **pip** to install the package:
 
 Then run `lets-go` in terminal to play game.
 
-![A screenshot of lets-go](./gameshot.png "lets-go")
+![A screenshot of lets-go](https://github.com/brookssu/lets-go/blob/main/gameshot.png "lets-go")
 
 ## Planning
 By now, there is only basic rules supporting for the **Go** game, and hasn't any new plans for the next step. No **AI**, no **GTP**, no **kifu**, just simple playing for fun.

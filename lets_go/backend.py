@@ -28,13 +28,14 @@ _STONE_MASK = 0x01
 _ALIVE = 0x10
 _CHECKED = 0x80
 
+_NEIGHBOURS = ((0, -1), (-1, 0), (0, 1), (1, 0))
 
 @dataclass(frozen=True)
 class Move:
     """Record of one move of the Go game.
     """
     num: int
-    grid: list[list[int]] | None
+    grid: list[list[int | None]] | None
     row: int
     col: int
     stone: int
@@ -42,7 +43,18 @@ class Move:
     cpts_count: list[int]
 
 
-    def is_identical_grid(self, grid: list[list[int]], c_stones: int) -> bool:
+    @property
+    def is_pass(self) -> bool:
+        """A property to identify if the move is a pass move.
+        """
+        return self.row < 0
+
+
+    def is_identical_grid(
+        self,
+        grid: list[list[int | None]],
+        c_stones: int,
+    ) -> bool:
         """To check if a given grid is exactly same as this moves'.
 
         Args:
@@ -61,7 +73,13 @@ def _gridcopy(grid):
     return [line.copy() for line in grid]
 
 
-def check_alive(grid, row, col, stone, captures):
+def check_alive(
+    grid: list[list[int | None]],
+    row: int,
+    col: int,
+    stone: int,
+    captures: list[tuple[int, int]],
+) -> bool:
     """Dectects alive state of a group of connected stones.
 
     Returns:
@@ -82,15 +100,33 @@ def check_alive(grid, row, col, stone, captures):
         return False
     grid[row][col] |= _CHECKED
 
-    if (check_alive(grid, row, col - 1, stone, captures) or
-            check_alive(grid, row - 1, col, stone, captures) or
-            check_alive(grid, row, col + 1, stone, captures) or
-            check_alive(grid, row + 1, col, stone, captures)):
-        grid[row][col] |= _ALIVE
-        return True
-
+    for nb_y, nb_x in _NEIGHBOURS:
+        if check_alive(grid, row + nb_y, col + nb_x, stone, captures):
+            grid[row][col] |= _ALIVE
+            return True
     captures.append((row, col))
     return False
+
+
+def _check_dead(grid, row, col, stone):
+    captures = []
+    check_alive(grid, row, col, stone, captures)
+    return captures
+
+
+def check_around(
+    grid: list[list[int | None]],
+    row: int,
+    col: int,
+    stone: int,
+) -> list[tuple[int, int]]:
+    """Checks neighbour stones around the given coordinate, returns all
+    captures if any of them aren't alive, or returns an empty list.
+    """
+    captures = []
+    for nb_y, nb_x in _NEIGHBOURS:
+        captures += _check_dead(grid, row + nb_y, col + nb_x, stone)
+    return captures
 
 
 class GoBackend:
@@ -109,21 +145,6 @@ class GoBackend:
         self._moves = [Move(0, grid, -1, -1, not first_move, None, [0, 0])]
         self._pointer = 0
         self._komi = komi
-
-
-    def _check_around(self, grid, row, col, stone):
-        # Checks opposite stones around the current, returns captures if
-        # any of them aren't alive.
-        #
-        left_cpts = []
-        check_alive(grid, row, col - 1, stone, left_cpts)
-        upper_cpts = []
-        check_alive(grid, row - 1, col, stone, upper_cpts)
-        right_cpts = []
-        check_alive(grid, row, col + 1, stone, right_cpts)
-        lower_cpts = []
-        check_alive(grid, row + 1, col, stone, lower_cpts)
-        return left_cpts + upper_cpts + right_cpts + lower_cpts
 
 
     def _new_move(self, move):
@@ -147,7 +168,7 @@ class GoBackend:
         # Checks alive states of current and surrounding opposite stones.
         grid = _gridcopy(last.grid)
         grid[row][col] = cur
-        captures = self._check_around(grid, row, col, opp)
+        captures = check_around(grid, row, col, opp)
         if not check_alive(grid, row, col, cur, []) and not captures:
             return None  # prohibits suicide.
 

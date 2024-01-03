@@ -1,13 +1,13 @@
 # lets-go
 A **Go** game in terminal environment.
 
-## Installation & Usage
+## Installation & Run
 Use **pip** to install the package:
 `pip3 install lets-go`
 
 Then run `lets-go` in terminal to play game.
 
-![A screenshot of lets-go](https://github.com/brookssu/lets-go/blob/main/gameshot.png "lets-go")
+![A screenshot of lets-go](https://github.com/brookssu/lets-go/blob/main/gameshot.png)
 
 ## Planning
 By now, there is only basic rules supporting for the **Go** game, and hasn't any new plans for the next step. No **AI**, no **GTP**, no **kifu**, just simple playing for fun.

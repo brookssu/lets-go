@@ -25,7 +25,7 @@ import ltermio
 from ltermio import Color, TextAttr, Key, MouseEvent, UIcon
 
 from .backend import GoBackend
-from .board import CursorGoBoard, TextBar
+from .board import CursorGoBoard
 
 
 STONES = (UIcon.BLACK_CIRCLE, UIcon.WHITE_CIRCLE)
@@ -34,7 +34,7 @@ STONES = (UIcon.BLACK_CIRCLE, UIcon.WHITE_CIRCLE)
 def _place_move(board, move):
     # Places a move on the board
     if move:
-        if move.row >= 0:   # not a pass move
+        if not move.is_pass:
             board.elem_in(move.row, move.col, STONES[move.stone])
             for point in move.cur_cpts:
                 board.elem_out(point[0], point[1])
@@ -45,7 +45,7 @@ def _place_move(board, move):
 def _takeback_move(board, move):
     # Takebacks a move from the board
     if move:
-        if move.row >= 0:   # not a pass move
+        if not move.is_pass:
             for point in move.cur_cpts:
                 board.elem_in(point[0], point[1], STONES[not move.stone])
             board.elem_out(move.row, move.col)

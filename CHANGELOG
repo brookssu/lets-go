@@ -1,4 +1,6 @@
-0.3.10 Current release
+0.3.11 Current release
+  * Optimize implementation of backend.
+0.3.10
   * Change the picture link to github.
 0.3.9
   * Fix missing screenshort picture in last version.
